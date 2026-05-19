@@ -45,13 +45,33 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
       # Upload results to GitHub Code Scanning
+      - name: Check if snyk-npm.sarif exists
+        id: check_npm_sarif
+        run: |
+          if [ -f "snyk-npm.sarif" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Upload Snyk NPM results to GitHub Code Scanning
+        if: steps.check_npm_sarif.outputs.exists == 'true'
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: snyk-npm.sarif
           category: snyk-npm
 
+      - name: Check if snyk-rust.sarif exists
+        id: check_rust_sarif
+        run: |
+          if [ -f "snyk-rust.sarif" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Upload Snyk Rust results to GitHub Code Scanning
+        if: steps.check_rust_sarif.outputs.exists == 'true'
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: snyk-rust.sarif
