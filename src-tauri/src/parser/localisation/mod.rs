@@ -337,43 +337,17 @@ pub fn parse_file<P: AsRef<Path>>(path: P) -> Result<LocalisationFile, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::atomic::{AtomicUsize, Ordering};
+    use crate::parser::test_utils::TempFile;
 
-    static FILE_COUNTER: AtomicUsize = AtomicUsize::new(0);
-
-    struct TempFile {
-        path: std::path::PathBuf,
+    fn make_temp_file(content: &[u8]) -> TempFile {
+        TempFile::new_with_filename(content, "temp_loc_l_english.yml")
     }
 
-    impl TempFile {
-        fn new(content: &[u8]) -> Self {
-            Self::new_with_filename(content, "temp_loc_l_english.yml")
-        }
-
-        fn new_with_filename(content: &[u8], filename_pattern: &str) -> Self {
-            let count = FILE_COUNTER.fetch_add(1, Ordering::SeqCst);
-            let mut path = std::env::temp_dir();
-            let filename = format!("{}_{}", count, filename_pattern);
-            path.push(filename);
-            std::fs::write(&path, content).unwrap();
-            Self { path }
-        }
-
-        fn path(&self) -> &std::path::Path {
-            &self.path
-        }
-    }
-
-    impl Drop for TempFile {
-        fn drop(&mut self) {
-            let _ = std::fs::remove_file(&self.path);
-        }
-    }
 
     #[test]
     fn test_happy_path() {
         let content = "\u{FEFF}l_english:\n GER_fascism:0 \"Fascism\"\n  GER_fascism_desc: \"German fascism description\"\n".as_bytes();
-        let file = TempFile::new(content);
+        let file = make_temp_file(content);
         let res = parse_file(file.path()).unwrap();
 
         assert_eq!(res.language, "english");
@@ -410,7 +384,7 @@ mod tests {
     #[test]
     fn test_comments_and_spaces() {
         let content = "\u{FEFF}# This is a comment\n\nl_english: # Inline comment\n  # Nested comment\n  KEY_1:0 \"Val 1\" # Comment after val\n".as_bytes();
-        let file = TempFile::new(content);
+        let file = make_temp_file(content);
         let res = parse_file(file.path()).unwrap();
 
         assert_eq!(res.language, "english");
@@ -423,7 +397,7 @@ mod tests {
     #[test]
     fn test_escaping_and_special_chars() {
         let content = "\u{FEFF}l_english:\n  KEY_ESC:0 \"Line 1\\nLine 2 with \\\"quotes\\\" and \\t tabs\"\n  KEY_COLOR: \"Some §Yyellow text§! here\"\n".as_bytes();
-        let file = TempFile::new(content);
+        let file = make_temp_file(content);
         let res = parse_file(file.path()).unwrap();
 
         assert_eq!(res.errors.len(), 0);
@@ -438,7 +412,7 @@ mod tests {
     #[test]
     fn test_error_missing_language() {
         let content = "\u{FEFF}  KEY_1:0 \"Val 1\"\n".as_bytes();
-        let file = TempFile::new(content);
+        let file = make_temp_file(content);
         let res = parse_file(file.path()).unwrap();
 
         assert_eq!(res.language, "");
@@ -450,7 +424,7 @@ mod tests {
     #[test]
     fn test_error_missing_colon() {
         let content = "\u{FEFF}l_english:\n  KEY_NO_COLON \"Val 1\"\n".as_bytes();
-        let file = TempFile::new(content);
+        let file = make_temp_file(content);
         let res = parse_file(file.path()).unwrap();
 
         assert_eq!(res.entries.len(), 0);
@@ -463,7 +437,7 @@ mod tests {
     fn test_error_invalid_key() {
         let content =
             "\u{FEFF}l_english:\n  KEY WITH SPACES:0 \"Val\"\n  KЁY_INVALID:0 \"Val\"\n".as_bytes();
-        let file = TempFile::new(content);
+        let file = make_temp_file(content);
         let res = parse_file(file.path()).unwrap();
 
         assert_eq!(res.entries.len(), 0);
@@ -475,7 +449,7 @@ mod tests {
     #[test]
     fn test_error_missing_quotes() {
         let content = "\u{FEFF}l_english:\n  KEY_1:0 Val\n  KEY_2:0 \"Missing closing\n".as_bytes();
-        let file = TempFile::new(content);
+        let file = make_temp_file(content);
         let res = parse_file(file.path()).unwrap();
 
         assert_eq!(res.entries.len(), 0);
@@ -489,7 +463,7 @@ mod tests {
     #[test]
     fn test_error_trailing_characters() {
         let content = "\u{FEFF}l_english:\n  KEY_1:0 \"Val 1\" trailing text here\n".as_bytes();
-        let file = TempFile::new(content);
+        let file = make_temp_file(content);
         let res = parse_file(file.path()).unwrap();
 
         assert_eq!(res.entries.len(), 0);
@@ -503,7 +477,7 @@ mod tests {
     #[test]
     fn test_error_missing_bom() {
         let content = "l_english:\n KEY_1:0 \"Val\"\n".as_bytes();
-        let file = TempFile::new(content);
+        let file = make_temp_file(content);
         let res = parse_file(file.path()).unwrap();
 
         assert_eq!(res.errors.len(), 1);
@@ -537,7 +511,7 @@ mod tests {
     #[test]
     fn test_error_duplicate_keys() {
         let content = "\u{FEFF}l_english:\n KEY_1:0 \"Val 1\"\n KEY_1:0 \"Val 2\"\n".as_bytes();
-        let file = TempFile::new(content);
+        let file = make_temp_file(content);
         let res = parse_file(file.path()).unwrap();
 
         assert_eq!(res.entries.len(), 2);
@@ -552,7 +526,7 @@ mod tests {
         for c in "l_english:\n KEY_1:0 \"Val\"\n".encode_utf16() {
             content.extend_from_slice(&c.to_le_bytes());
         }
-        let file = TempFile::new(content.as_slice());
+        let file = make_temp_file(content.as_slice());
         let res = parse_file(file.path()).unwrap();
 
         assert_eq!(res.errors.len(), 1);
@@ -563,7 +537,7 @@ mod tests {
     fn test_error_encoding_ansi() {
         // Запишем некорректные байты UTF-8 (Windows-1251)
         let content = b"l_english:\n KEY_1:0 \"\xCF\xF0\xE8\xE2\xE5\xF2\" # Windows-1251 Privet\n";
-        let file = TempFile::new(content);
+        let file = make_temp_file(content);
         let res = parse_file(file.path()).unwrap();
 
         // 1 ошибка (некорректные символы UTF-8)
@@ -599,40 +573,15 @@ mod tests {
         let mut total_errors = 0;
         let mut failed_files = Vec::new();
 
-        fn scan_dir(
-            dir: &std::path::Path,
-            files_scanned: &mut usize,
-            total_errors: &mut usize,
-            failed_files: &mut Vec<(std::path::PathBuf, usize)>,
-        ) {
-            if let Ok(entries) = std::fs::read_dir(dir) {
-                for entry in entries.flatten() {
-                    let path = entry.path();
-                    if path.is_dir() {
-                        scan_dir(&path, files_scanned, total_errors, failed_files);
-                    } else if path.extension().map_or(false, |ext| ext == "yml") {
-                        *files_scanned += 1;
-                        match parse_file(&path) {
-                            Ok(res) => {
-                                if !res.errors.is_empty() {
-                                    *total_errors += res.errors.len();
-                                    failed_files.push((path.clone(), res.errors.len()));
-                                }
-                            }
-                            Err(e) => {
-                                println!("Сбой при чтении файла {:?}: {}", path, e);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        scan_dir(
+        crate::parser::test_utils::scan_dir(
             &mod_dir,
+            "yml",
             &mut files_scanned,
             &mut total_errors,
             &mut failed_files,
+            |path| {
+                parse_file(path).ok().map(|res| res.errors.len())
+            },
         );
 
         println!("\n=== ОТЧЕТ ПО ПОЛЕВОМУ ТЕСТИРОВАНИЮ ===");

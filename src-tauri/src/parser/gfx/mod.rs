@@ -446,7 +446,7 @@ fn validate_sprite_block(
             }
             "noofframes" => {
                 no_of_frames = Some((&field.value, field.line_number));
-                validate_positive_int(&field.value, "noOfFrames", field.line_number, errors);
+                validate_positive_number(&field.value, "noOfFrames", field.line_number, errors, true);
             }
             "looping" => {
                 looping = Some((&field.value, field.line_number));
@@ -458,7 +458,7 @@ fn validate_sprite_block(
             }
             "animation_rate_fps" => {
                 animation_rate_fps = Some((&field.value, field.line_number));
-                validate_positive_float(&field.value, "animation_rate_fps", field.line_number, errors);
+                validate_positive_number(&field.value, "animation_rate_fps", field.line_number, errors, false);
             }
             _ => {
                 // Игнорируем неопознанные свойства, чтобы избежать ложных предупреждений
@@ -523,13 +523,7 @@ fn validate_sprite_block(
             }
         }
         "progressbartype" => {
-            let mut has_t1 = false;
-            let mut has_t2 = false;
-            for f in fields {
-                let k = f.key.to_lowercase();
-                if k == "texturefile1" { has_t1 = true; }
-                if k == "texturefile2" { has_t2 = true; }
-            }
+            let (has_t1, has_t2) = check_texture_fields(fields);
             if !has_t1 {
                 errors.push(GfxError {
                     line_number,
@@ -553,13 +547,7 @@ fn validate_sprite_block(
             }
         }
         "maskedShieldType" => {
-            let mut has_t1 = false;
-            let mut has_t2 = false;
-            for f in fields {
-                let k = f.key.to_lowercase();
-                if k == "texturefile1" { has_t1 = true; }
-                if k == "texturefile2" { has_t2 = true; }
-            }
+            let (has_t1, has_t2) = check_texture_fields(fields);
             if !has_t1 {
                 errors.push(GfxError {
                     line_number,
@@ -718,25 +706,23 @@ fn validate_int(val: &Value, name: &str, line_number: usize, errors: &mut Vec<Gf
     }
 }
 
-fn validate_positive_int(val: &Value, name: &str, line_number: usize, errors: &mut Vec<GfxError>) {
+fn validate_positive_number(val: &Value, name: &str, line_number: usize, errors: &mut Vec<GfxError>, is_int: bool) {
     if let Value::Number(s) = val {
-        match s.parse::<i32>() {
-            Ok(v) => {
-                if v <= 0 {
-                    errors.push(GfxError {
-                        line_number,
-                        message: format!("Ошибка: Значение '{}' для '{}' должно быть строго больше 0", s, name),
-                        severity: "Error".to_string(),
-                    });
-                }
-            }
-            Err(_) => {
-                errors.push(GfxError {
-                    line_number,
-                    message: format!("Ошибка: Значение '{}' для '{}' должно быть целым числом", s, name),
-                    severity: "Error".to_string(),
-                });
-            }
+        let is_valid = if is_int {
+            s.parse::<i32>().map(|v| v > 0).unwrap_or(false)
+        } else {
+            s.parse::<f32>().map(|v| v > 0.0).unwrap_or(false)
+        };
+        
+        if !is_valid {
+            errors.push(GfxError {
+                line_number,
+                message: format!(
+                    "Ошибка: Значение '{}' для '{}' должно быть строго больше 0 ({})",
+                    s, name, if is_int { "целое число" } else { "число с плавающей точкой" }
+                ),
+                severity: "Error".to_string(),
+            });
         }
     } else {
         errors.push(GfxError {
@@ -747,33 +733,15 @@ fn validate_positive_int(val: &Value, name: &str, line_number: usize, errors: &m
     }
 }
 
-fn validate_positive_float(val: &Value, name: &str, line_number: usize, errors: &mut Vec<GfxError>) {
-    if let Value::Number(s) = val {
-        match s.parse::<f32>() {
-            Ok(v) => {
-                if v <= 0.0 {
-                    errors.push(GfxError {
-                        line_number,
-                        message: format!("Ошибка: Значение '{}' для '{}' должно быть больше 0.0", s, name),
-                        severity: "Error".to_string(),
-                    });
-                }
-            }
-            Err(_) => {
-                errors.push(GfxError {
-                    line_number,
-                    message: format!("Ошибка: Значение '{}' для '{}' должно быть числом", s, name),
-                    severity: "Error".to_string(),
-                });
-            }
-        }
-    } else {
-        errors.push(GfxError {
-            line_number,
-            message: format!("Ошибка: Значение для '{}' должно быть числом", name),
-            severity: "Error".to_string(),
-        });
+fn check_texture_fields(fields: &[KeyValuePair]) -> (bool, bool) {
+    let mut has_t1 = false;
+    let mut has_t2 = false;
+    for f in fields {
+        let k = f.key.to_lowercase();
+        if k == "texturefile1" { has_t1 = true; }
+        if k == "texturefile2" { has_t2 = true; }
     }
+    (has_t1, has_t2)
 }
 
 fn validate_boolean(val: &Value, name: &str, line_number: usize, errors: &mut Vec<GfxError>) {
@@ -789,37 +757,10 @@ fn validate_boolean(val: &Value, name: &str, line_number: usize, errors: &mut Ve
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::atomic::{AtomicUsize, Ordering};
+    use crate::parser::test_utils::TempFile;
 
-    static FILE_COUNTER: AtomicUsize = AtomicUsize::new(0);
-
-    struct TempFile {
-        path: std::path::PathBuf,
-    }
-
-    impl TempFile {
-        fn new(content: &str) -> Self {
-            Self::new_with_filename(content, "temp_ui.gfx")
-        }
-
-        fn new_with_filename(content: &str, filename_pattern: &str) -> Self {
-            let count = FILE_COUNTER.fetch_add(1, Ordering::SeqCst);
-            let mut path = std::env::temp_dir();
-            let filename = format!("{}_{}", count, filename_pattern);
-            path.push(filename);
-            std::fs::write(&path, content).unwrap();
-            Self { path }
-        }
-
-        fn path(&self) -> &std::path::Path {
-            &self.path
-        }
-    }
-
-    impl Drop for TempFile {
-        fn drop(&mut self) {
-            let _ = std::fs::remove_file(&self.path);
-        }
+    fn make_temp_file(content: &str) -> TempFile {
+        TempFile::new_with_filename(content, "temp_ui.gfx")
     }
 
     #[test]
@@ -833,7 +774,7 @@ mod tests {
                 }
             }
         "#;
-        let file = TempFile::new(content);
+        let file = make_temp_file(content);
         let res = parse_file(file.path()).unwrap();
 
         assert_eq!(res.errors.len(), 0);
@@ -853,7 +794,7 @@ mod tests {
                 }
             }
         "#;
-        let file = TempFile::new(content);
+        let file = make_temp_file(content);
         let res = parse_file(file.path()).unwrap();
 
         // Должно успешно распарситься, но выдать Warning о нецитируемом пути
@@ -875,7 +816,7 @@ mod tests {
                 }
             }
         "#;
-        let file = TempFile::new(content);
+        let file = make_temp_file(content);
         let res = parse_file(file.path()).unwrap();
 
         assert_eq!(res.errors.len(), 0);
@@ -902,7 +843,7 @@ mod tests {
                 }
             }
         "#;
-        let file = TempFile::new(content);
+        let file = make_temp_file(content);
         let res = parse_file(file.path()).unwrap();
 
         assert_eq!(res.errors.len(), 0);
@@ -923,7 +864,7 @@ mod tests {
                 }
             }
         "#;
-        let file = TempFile::new(content);
+        let file = make_temp_file(content);
         let res = parse_file(file.path()).unwrap();
 
         assert_eq!(res.errors.len(), 0);
@@ -940,7 +881,7 @@ mod tests {
                 # Забыли скобку }
             }
         "#;
-        let file = TempFile::new(content);
+        let file = make_temp_file(content);
         let res = parse_file(file.path()).unwrap();
 
         assert_eq!(res.entries.len(), 0);
@@ -958,7 +899,7 @@ mod tests {
                 }
             }
         "#;
-        let file = TempFile::new(content);
+        let file = make_temp_file(content);
         let res = parse_file(file.path()).unwrap();
 
         assert_eq!(res.entries.len(), 1);
@@ -980,7 +921,7 @@ mod tests {
                 }
             }
         "#;
-        let file = TempFile::new(content);
+        let file = make_temp_file(content);
         let res = parse_file(file.path()).unwrap();
 
         // Должны быть ошибки валидации
@@ -1003,7 +944,7 @@ mod tests {
                 }
             }
         "#;
-        let file = TempFile::new(content);
+        let file = make_temp_file(content);
         let res = parse_file(file.path()).unwrap();
 
         assert_eq!(res.entries.len(), 2);
@@ -1035,40 +976,15 @@ mod tests {
         let mut total_errors = 0;
         let mut failed_files = Vec::new();
 
-        fn scan_dir(
-            dir: &std::path::Path,
-            files_scanned: &mut usize,
-            total_errors: &mut usize,
-            failed_files: &mut Vec<(std::path::PathBuf, usize)>,
-        ) {
-            if let Ok(entries) = std::fs::read_dir(dir) {
-                for entry in entries.flatten() {
-                    let path = entry.path();
-                    if path.is_dir() {
-                        scan_dir(&path, files_scanned, total_errors, failed_files);
-                    } else if path.extension().map_or(false, |ext| ext == "gfx") {
-                        *files_scanned += 1;
-                        match parse_file(&path) {
-                            Ok(res) => {
-                                if !res.errors.is_empty() {
-                                    *total_errors += res.errors.len();
-                                    failed_files.push((path.clone(), res.errors.len()));
-                                }
-                            }
-                            Err(e) => {
-                                println!("Сбой при чтении файла {:?}: {}", path, e);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        scan_dir(
+        crate::parser::test_utils::scan_dir(
             &mod_dir,
+            "gfx",
             &mut files_scanned,
             &mut total_errors,
             &mut failed_files,
+            |path| {
+                parse_file(path).ok().map(|res| res.errors.len())
+            },
         );
 
         println!("\n=== ОТЧЕТ ПО ПОЛЕВОМУ ТЕСТИРОВАНИЮ GFX ===");
