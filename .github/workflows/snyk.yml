@@ -33,13 +33,16 @@ jobs:
           args: --sarif-file-output=snyk-npm.sarif
 
       # Scan backend rust cargo dependencies
+      - name: Install Snyk CLI
+        uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04 # v1.0.0
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
       - name: Run Snyk to check Rust cargo dependencies
-        uses: snyk/actions/rust@9adf32b1121593767fc3c057af55b55db032dc04 # v1.0.0
+        run: snyk test --file=src-tauri/Cargo.toml --sarif-file-output=snyk-rust.sarif
         continue-on-error: true # Ensure we proceed to upload the results
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          args: --sarif-file-output=snyk-rust.sarif
 
       # Upload results to GitHub Code Scanning
       - name: Upload Snyk NPM results to GitHub Code Scanning
