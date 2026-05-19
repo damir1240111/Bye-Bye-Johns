@@ -43,13 +43,13 @@ jobs:
 
       # Upload results to GitHub Code Scanning
       - name: Upload Snyk NPM results to GitHub Code Scanning
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: snyk-npm.sarif
           category: snyk-npm
 
       - name: Upload Snyk Rust results to GitHub Code Scanning
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: snyk-rust.sarif
           category: snyk-rust
