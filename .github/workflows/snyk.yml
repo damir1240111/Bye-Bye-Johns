@@ -16,16 +16,16 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
         with:
           node-version: 20
 
       # Scan frontend npm dependencies
       - name: Run Snyk to check npm dependencies
-        uses: snyk/actions/node@master
+        uses: snyk/actions/node@9adf32b1121593767fc3c057af55b55db032dc04 # v1.0.0
         continue-on-error: true # Ensure we proceed to upload the results
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
@@ -34,7 +34,7 @@ jobs:
 
       # Scan backend rust cargo dependencies
       - name: Run Snyk to check Rust cargo dependencies
-        uses: snyk/actions/rust@master
+        uses: snyk/actions/rust@9adf32b1121593767fc3c057af55b55db032dc04 # v1.0.0
         continue-on-error: true # Ensure we proceed to upload the results
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
