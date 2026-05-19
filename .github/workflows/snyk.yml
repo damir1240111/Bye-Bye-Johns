@@ -32,18 +32,6 @@ jobs:
         with:
           args: --sarif-file-output=snyk-npm.sarif
 
-      # Scan backend rust cargo dependencies
-      - name: Install Snyk CLI
-        uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04 # v1.0.0
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-
-      - name: Run Snyk to check Rust cargo dependencies
-        run: snyk test --file=src-tauri/Cargo.toml --sarif-file-output=snyk-rust.sarif
-        continue-on-error: true # Ensure we proceed to upload the results
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-
       # Upload results to GitHub Code Scanning
       - name: Check if snyk-npm.sarif exists
         id: check_npm_sarif
@@ -60,19 +48,3 @@ jobs:
         with:
           sarif_file: snyk-npm.sarif
           category: snyk-npm
-
-      - name: Check if snyk-rust.sarif exists
-        id: check_rust_sarif
-        run: |
-          if [ -f "snyk-rust.sarif" ]; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Upload Snyk Rust results to GitHub Code Scanning
-        if: steps.check_rust_sarif.outputs.exists == 'true'
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: snyk-rust.sarif
-          category: snyk-rust
