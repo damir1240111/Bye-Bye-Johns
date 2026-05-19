@@ -1,0 +1,55 @@
+name: "Snyk Dependency Security Scan"
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch: # Allows manual trigger from the GitHub Actions UI
+
+jobs:
+  snyk-scan:
+    name: Snyk Dependency Check
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Scan frontend npm dependencies
+      - name: Run Snyk to check npm dependencies
+        uses: snyk/actions/node@master
+        continue-on-error: true # Ensure we proceed to upload the results
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --sarif-file-output=snyk-npm.sarif
+
+      # Scan backend rust cargo dependencies
+      - name: Run Snyk to check Rust cargo dependencies
+        uses: snyk/actions/rust@master
+        continue-on-error: true # Ensure we proceed to upload the results
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --sarif-file-output=snyk-rust.sarif
+
+      # Upload results to GitHub Code Scanning
+      - name: Upload Snyk NPM results to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-npm.sarif
+          category: snyk-npm
+
+      - name: Upload Snyk Rust results to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-rust.sarif
+          category: snyk-rust
