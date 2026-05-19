@@ -19,6 +19,6 @@ jobs:
           fetch-depth: 0 # Required for better analysis
 
       - name: SonarQube Cloud Scan
-        uses: sonarsource/sonarqube-scan-action@329b35064432292109673410777b752495b64c05 # v7.2.0
+        uses: sonarsource/sonarqube-scan-action@55e44800a8f495208cce6e4e82f5dedb45fcf0ef # v7.2.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
