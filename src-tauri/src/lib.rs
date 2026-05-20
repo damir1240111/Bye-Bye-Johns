@@ -75,6 +75,38 @@ fn is_potential_loc_key(s: &str) -> bool {
     s.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '.' || c == '-')
 }
 
+fn make_gui_synergy_error(
+    gui_path: &str,
+    element: &parser::gui::GuiElement,
+    referenced_name: &str,
+    error_type: &str,
+    context: &str,
+) -> GuiSynergyError {
+    let suffix = if context.is_empty() {
+        String::new()
+    } else {
+        format!(" ({})", context)
+    };
+    let category = if error_type == "MissingSprite" {
+        "несуществующий спрайт"
+    } else {
+        "ненайденный ключ локализации"
+    };
+    GuiSynergyError {
+        gui_file: gui_path.to_string(),
+        line_number: element.line_number,
+        element_name: element.name.clone(),
+        element_type: element.element_type.clone(),
+        referenced_name: referenced_name.to_string(),
+        error_type: error_type.to_string(),
+        message: format!(
+            "Строка {}: Элемент '{}' ({}) ссылается на {} '{}'{}",
+            element.line_number, element.name, element.element_type,
+            category, referenced_name, suffix
+        ),
+    }
+}
+
 fn collect_gui_synergy_errors(
     element: &parser::gui::GuiElement,
     gui_path: &str,
@@ -82,88 +114,34 @@ fn collect_gui_synergy_errors(
     defined_loc_keys: &HashSet<String>,
     gui_errors: &mut Vec<GuiSynergyError>,
 ) {
-    if let Some(sprite) = &element.quad_texture_sprite {
-        if !defined_sprites.contains(sprite) {
-            gui_errors.push(GuiSynergyError {
-                gui_file: gui_path.to_string(),
-                line_number: element.line_number,
-                element_name: element.name.clone(),
-                element_type: element.element_type.clone(),
-                referenced_name: sprite.clone(),
-                error_type: "MissingSprite".to_string(),
-                message: format!(
-                    "Строка {}: Элемент '{}' ({}) ссылается на несуществующий спрайт '{}' (quadTextureSprite)",
-                    element.line_number, element.name, element.element_type, sprite
-                ),
-            });
+    // Проверка ссылок на спрайты
+    let sprite_refs: &[(&Option<String>, &str)] = &[
+        (&element.quad_texture_sprite, "quadTextureSprite"),
+        (&element.sprite_type, "spriteType"),
+    ];
+    for (field, context) in sprite_refs {
+        if let Some(name) = field {
+            if !defined_sprites.contains(name) {
+                gui_errors.push(make_gui_synergy_error(
+                    gui_path, element, name, "MissingSprite", context,
+                ));
+            }
         }
     }
 
-    if let Some(sprite) = &element.sprite_type {
-        if !defined_sprites.contains(sprite) {
-            gui_errors.push(GuiSynergyError {
-                gui_file: gui_path.to_string(),
-                line_number: element.line_number,
-                element_name: element.name.clone(),
-                element_type: element.element_type.clone(),
-                referenced_name: sprite.clone(),
-                error_type: "MissingSprite".to_string(),
-                message: format!(
-                    "Строка {}: Элемент '{}' ({}) ссылается на несуществующий спрайт '{}' (spriteType)",
-                    element.line_number, element.name, element.element_type, sprite
-                ),
-            });
-        }
-    }
-
-    if let Some(txt) = &element.text {
-        if is_potential_loc_key(txt) && !defined_loc_keys.contains(txt) {
-            gui_errors.push(GuiSynergyError {
-                gui_file: gui_path.to_string(),
-                line_number: element.line_number,
-                element_name: element.name.clone(),
-                element_type: element.element_type.clone(),
-                referenced_name: txt.clone(),
-                error_type: "MissingLocalisation".to_string(),
-                message: format!(
-                    "Строка {}: Элемент '{}' ({}) ссылается на ненайденный ключ локализации '{}'",
-                    element.line_number, element.name, element.element_type, txt
-                ),
-            });
-        }
-    }
-
-    if let Some(txt) = &element.pdx_tooltip {
-        if is_potential_loc_key(txt) && !defined_loc_keys.contains(txt) {
-            gui_errors.push(GuiSynergyError {
-                gui_file: gui_path.to_string(),
-                line_number: element.line_number,
-                element_name: element.name.clone(),
-                element_type: element.element_type.clone(),
-                referenced_name: txt.clone(),
-                error_type: "MissingLocalisation".to_string(),
-                message: format!(
-                    "Строка {}: Элемент '{}' ({}) ссылается на ненайденный ключ локализации '{}' (pdx_tooltip)",
-                    element.line_number, element.name, element.element_type, txt
-                ),
-            });
-        }
-    }
-
-    if let Some(txt) = &element.pdx_tooltip_delayed {
-        if is_potential_loc_key(txt) && !defined_loc_keys.contains(txt) {
-            gui_errors.push(GuiSynergyError {
-                gui_file: gui_path.to_string(),
-                line_number: element.line_number,
-                element_name: element.name.clone(),
-                element_type: element.element_type.clone(),
-                referenced_name: txt.clone(),
-                error_type: "MissingLocalisation".to_string(),
-                message: format!(
-                    "Строка {}: Элемент '{}' ({}) ссылается на ненайденный ключ локализации '{}' (pdx_tooltip_delayed)",
-                    element.line_number, element.name, element.element_type, txt
-                ),
-            });
+    // Проверка ссылок на ключи локализации
+    let loc_refs: &[(&Option<String>, &str)] = &[
+        (&element.text, ""),
+        (&element.pdx_tooltip, "pdx_tooltip"),
+        (&element.pdx_tooltip_delayed, "pdx_tooltip_delayed"),
+    ];
+    for (field, context) in loc_refs {
+        if let Some(key) = field {
+            if is_potential_loc_key(key) && !defined_loc_keys.contains(key) {
+                gui_errors.push(make_gui_synergy_error(
+                    gui_path, element, key, "MissingLocalisation", context,
+                ));
+            }
         }
     }
 

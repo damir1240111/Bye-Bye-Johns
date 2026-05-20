@@ -275,123 +275,43 @@ fn validate_sprite_block(
 
     let has_textures = !texture_files.is_empty();
 
+    let mut require_field = |condition: bool, field_name: &str| {
+        if !condition {
+            errors.push(GfxError {
+                line_number,
+                message: format!("Элемент '{}' не содержит обязательное поле '{}'", entry_type, field_name),
+                severity: "Error".to_string(),
+            });
+        }
+    };
+
     match entry_type {
         "spriteType" => {
-            if !has_textures {
-                errors.push(GfxError {
-                    line_number,
-                    message: "Элемент 'spriteType' не содержит обязательное поле 'texturefile'".to_string(),
-                    severity: "Error".to_string(),
-                });
-            }
+            require_field(has_textures, "texturefile");
         }
         "corneredTileSpriteType" => {
-            if !has_textures {
-                errors.push(GfxError {
-                    line_number,
-                    message: "Элемент 'corneredTileSpriteType' не содержит обязательное поле 'texturefile'".to_string(),
-                    severity: "Error".to_string(),
-                });
-            }
-            if border_size.is_none() {
-                errors.push(GfxError {
-                    line_number,
-                    message: "Элемент 'corneredTileSpriteType' не содержит обязательное поле 'borderSize'".to_string(),
-                    severity: "Error".to_string(),
-                });
-            }
-            if size.is_none() {
-                errors.push(GfxError {
-                    line_number,
-                    message: "Элемент 'corneredTileSpriteType' не содержит обязательное поле 'size'".to_string(),
-                    severity: "Error".to_string(),
-                });
-            }
+            require_field(has_textures, "texturefile");
+            require_field(border_size.is_some(), "borderSize");
+            require_field(size.is_some(), "size");
         }
         "progressbartype" => {
             let (has_t1, has_t2) = check_texture_fields(fields);
-            if !has_t1 {
-                errors.push(GfxError {
-                    line_number,
-                    message: "Элемент 'progressbartype' не содержит обязательное поле 'textureFile1'".to_string(),
-                    severity: "Error".to_string(),
-                });
-            }
-            if !has_t2 {
-                errors.push(GfxError {
-                    line_number,
-                    message: "Элемент 'progressbartype' не содержит обязательное поле 'textureFile2'".to_string(),
-                    severity: "Error".to_string(),
-                });
-            }
-            if size.is_none() {
-                errors.push(GfxError {
-                    line_number,
-                    message: "Элемент 'progressbartype' не содержит обязательное поле 'size'".to_string(),
-                    severity: "Error".to_string(),
-                });
-            }
+            require_field(has_t1, "textureFile1");
+            require_field(has_t2, "textureFile2");
+            require_field(size.is_some(), "size");
         }
         "maskedShieldType" => {
             let (has_t1, has_t2) = check_texture_fields(fields);
-            if !has_t1 {
-                errors.push(GfxError {
-                    line_number,
-                    message: "Элемент 'maskedShieldType' не содержит обязательное поле 'textureFile1'".to_string(),
-                    severity: "Error".to_string(),
-                });
-            }
-            if !has_t2 {
-                errors.push(GfxError {
-                    line_number,
-                    message: "Элемент 'maskedShieldType' не содержит обязательное поле 'textureFile2'".to_string(),
-                    severity: "Error".to_string(),
-                });
-            }
-            if effect_file.is_none() {
-                errors.push(GfxError {
-                    line_number,
-                    message: "Элемент 'maskedShieldType' не содержит обязательное поле 'effectFile'".to_string(),
-                    severity: "Error".to_string(),
-                });
-            }
+            require_field(has_t1, "textureFile1");
+            require_field(has_t2, "textureFile2");
+            require_field(effect_file.is_some(), "effectFile");
         }
         "frameAnimatedSpriteType" => {
-            if !has_textures {
-                errors.push(GfxError {
-                    line_number,
-                    message: "Элемент 'frameAnimatedSpriteType' не содержит обязательное поле 'texturefile'".to_string(),
-                    severity: "Error".to_string(),
-                });
-            }
-            if no_of_frames.is_none() {
-                errors.push(GfxError {
-                    line_number,
-                    message: "Элемент 'frameAnimatedSpriteType' не содержит обязательное поле 'noOfFrames'".to_string(),
-                    severity: "Error".to_string(),
-                });
-            }
-            if animation_rate_fps.is_none() {
-                errors.push(GfxError {
-                    line_number,
-                    message: "Элемент 'frameAnimatedSpriteType' не содержит обязательное поле 'animation_rate_fps'".to_string(),
-                    severity: "Error".to_string(),
-                });
-            }
-            if looping.is_none() {
-                errors.push(GfxError {
-                    line_number,
-                    message: "Элемент 'frameAnimatedSpriteType' не содержит обязательное поле 'looping'".to_string(),
-                    severity: "Error".to_string(),
-                });
-            }
-            if play_on_show.is_none() {
-                errors.push(GfxError {
-                    line_number,
-                    message: "Элемент 'frameAnimatedSpriteType' не содержит обязательное поле 'play_on_show'".to_string(),
-                    severity: "Error".to_string(),
-                });
-            }
+            require_field(has_textures, "texturefile");
+            require_field(no_of_frames.is_some(), "noOfFrames");
+            require_field(animation_rate_fps.is_some(), "animation_rate_fps");
+            require_field(looping.is_some(), "looping");
+            require_field(play_on_show.is_some(), "play_on_show");
         }
         _ => {}
     }

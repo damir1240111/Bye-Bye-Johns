@@ -123,6 +123,14 @@ fn validate_sprite_name(name: &str, line_number: usize, constants: &HashMap<Stri
     }
 }
 
+fn resolve_string_value(value: &Value, constants: &HashMap<String, String>) -> Option<String> {
+    match value {
+        Value::String(s) => Some(resolve_val(s, constants).to_string()),
+        Value::Number(n) => Some(resolve_val(n, constants).to_string()),
+        _ => None,
+    }
+}
+
 fn parse_element_block(
     element_type: &str,
     value: &Value,
@@ -183,62 +191,28 @@ fn parse_element_block(
                 }
             }
             "quadtexturesprite" => {
-                if let Value::String(s) = &field.value {
-                    let resolved = resolve_val(s, constants).to_string();
+                if let Some(resolved) = resolve_string_value(&field.value, constants) {
+                    validate_sprite_name(&resolved, field.line_number, constants, errors);
                     quad_texture_sprite = Some(resolved);
-                    validate_sprite_name(s, field.line_number, constants, errors);
-                } else if let Value::Number(n) = &field.value {
-                    let resolved = resolve_val(n, constants).to_string();
-                    quad_texture_sprite = Some(resolved);
-                    validate_sprite_name(n, field.line_number, constants, errors);
                 }
             }
             "spritetype" => {
-                if let Value::String(s) = &field.value {
-                    let resolved = resolve_val(s, constants).to_string();
+                if let Some(resolved) = resolve_string_value(&field.value, constants) {
+                    validate_sprite_name(&resolved, field.line_number, constants, errors);
                     sprite_type = Some(resolved);
-                    validate_sprite_name(s, field.line_number, constants, errors);
-                } else if let Value::Number(n) = &field.value {
-                    let resolved = resolve_val(n, constants).to_string();
-                    sprite_type = Some(resolved);
-                    validate_sprite_name(n, field.line_number, constants, errors);
                 }
             }
             "text" | "buttontext" => {
-                if let Value::String(s) = &field.value {
-                    let resolved = resolve_val(s, constants).to_string();
-                    text = Some(resolved);
-                } else if let Value::Number(n) = &field.value {
-                    let resolved = resolve_val(n, constants).to_string();
-                    text = Some(resolved);
-                }
+                text = resolve_string_value(&field.value, constants).or(text);
             }
             "font" | "buttonfont" => {
-                if let Value::String(s) = &field.value {
-                    let resolved = resolve_val(s, constants).to_string();
-                    font = Some(resolved);
-                } else if let Value::Number(n) = &field.value {
-                    let resolved = resolve_val(n, constants).to_string();
-                    font = Some(resolved);
-                }
+                font = resolve_string_value(&field.value, constants).or(font);
             }
             "pdx_tooltip" => {
-                if let Value::String(s) = &field.value {
-                    let resolved = resolve_val(s, constants).to_string();
-                    pdx_tooltip = Some(resolved);
-                } else if let Value::Number(n) = &field.value {
-                    let resolved = resolve_val(n, constants).to_string();
-                    pdx_tooltip = Some(resolved);
-                }
+                pdx_tooltip = resolve_string_value(&field.value, constants).or(pdx_tooltip);
             }
             "pdx_tooltip_delayed" => {
-                if let Value::String(s) = &field.value {
-                    let resolved = resolve_val(s, constants).to_string();
-                    pdx_tooltip_delayed = Some(resolved);
-                } else if let Value::Number(n) = &field.value {
-                    let resolved = resolve_val(n, constants).to_string();
-                    pdx_tooltip_delayed = Some(resolved);
-                }
+                pdx_tooltip_delayed = resolve_string_value(&field.value, constants).or(pdx_tooltip_delayed);
             }
             "bordersize" | "scrolloffset" => {
                 if parse_xy(&field.value, constants).is_none() {
