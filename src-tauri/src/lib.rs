@@ -192,6 +192,11 @@ fn parse_history_unit(path: &str) -> Result<(parser::history::units::UnitOob, Ve
 }
 
 #[tauri::command]
+fn parse_common_file(path: &str) -> Result<parser::common::CommonParseResult, String> {
+    parser::common::parse_file(path)
+}
+
+#[tauri::command]
 fn validate_synergy(
     localisation_paths: Vec<String>,
     gfx_paths: Vec<String>,
@@ -274,6 +279,7 @@ pub fn run() {
             parse_history_country,
             parse_history_general,
             parse_history_unit,
+            parse_common_file,
             validate_synergy
         ])
         .run(tauri::generate_context!())

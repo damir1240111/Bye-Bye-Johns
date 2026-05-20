@@ -3,6 +3,7 @@ pub mod localisation;
 pub mod gfx;
 pub mod gui;
 pub mod history;
+pub mod common;
 #[cfg(test)]
 pub mod test_utils;
 
