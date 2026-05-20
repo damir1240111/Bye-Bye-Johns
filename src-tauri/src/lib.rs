@@ -172,6 +172,26 @@ fn parse_gui_file(path: &str) -> Result<parser::gui::GuiFile, String> {
 }
 
 #[tauri::command]
+fn parse_history_state(path: &str) -> Result<(parser::history::states::State, Vec<parser::history::HistoryError>), String> {
+    parser::history::states::parse_file(path)
+}
+
+#[tauri::command]
+fn parse_history_country(path: &str) -> Result<(parser::history::countries::CountryHistory, Vec<parser::history::HistoryError>), String> {
+    parser::history::countries::parse_file(path)
+}
+
+#[tauri::command]
+fn parse_history_general(path: &str) -> Result<(Vec<parser::history::general::Character>, Vec<parser::history::HistoryError>), String> {
+    parser::history::general::parse_file(path)
+}
+
+#[tauri::command]
+fn parse_history_unit(path: &str) -> Result<(parser::history::units::UnitOob, Vec<parser::history::HistoryError>), String> {
+    parser::history::units::parse_file(path)
+}
+
+#[tauri::command]
 fn validate_synergy(
     localisation_paths: Vec<String>,
     gfx_paths: Vec<String>,
@@ -250,6 +270,10 @@ pub fn run() {
             parse_localisation_file,
             parse_gfx_file,
             parse_gui_file,
+            parse_history_state,
+            parse_history_country,
+            parse_history_general,
+            parse_history_unit,
             validate_synergy
         ])
         .run(tauri::generate_context!())

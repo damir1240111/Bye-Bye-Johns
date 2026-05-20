@@ -137,34 +137,43 @@ fn parse_block_contents(
             return Ok(pairs);
         }
 
-        // Ожидаем ключ (Идентификатор)
-        let key = match &current.token {
-            Token::Identifier(k) => k.clone(),
-            _ => return Err(format!("Строка {}: Ожидался ключ, найдено {:?}", current.line_number, current.token)),
+        // Check if this is a key-value pair
+        let is_kv = match &current.token {
+            Token::Identifier(_) | Token::StringLiteral(_) => {
+                *index + 1 < tokens.len() && tokens[*index + 1].token == Token::Equals
+            }
+            _ => false,
         };
-        let key_line = current.line_number;
-        *index += 1;
 
-        // Ожидаем символ '='
-        if *index >= tokens.len() {
-            return Err(format!("Строка {}: Неожиданный конец файла после ключа '{}'", key_line, key));
-        }
-        if tokens[*index].token != Token::Equals {
-            return Err(format!("Строка {}: Ожидался символ '=', найдено {:?}", tokens[*index].line_number, tokens[*index].token));
-        }
-        *index += 1;
+        if is_kv {
+            let key = match &current.token {
+                Token::Identifier(k) => k.clone(),
+                Token::StringLiteral(k) => k.clone(),
+                _ => unreachable!(),
+            };
+            let key_line = current.line_number;
+            *index += 2; // skip key and '='
 
-        // Ожидаем значение
-        if *index >= tokens.len() {
-            return Err(format!("Строка {}: Неожиданный конец файла после '='", key_line));
-        }
+            if *index >= tokens.len() {
+                return Err(format!("Строка {}: Неожиданный конец файла после '='", key_line));
+            }
 
-        let value = parse_value(tokens, index)?;
-        pairs.push(KeyValuePair {
-            key,
-            value,
-            line_number: key_line,
-        });
+            let value = parse_value(tokens, index)?;
+            pairs.push(KeyValuePair {
+                key,
+                value,
+                line_number: key_line,
+            });
+        } else {
+            // Treat as a list item (empty key, value only)
+            let line_num = current.line_number;
+            let value = parse_value(tokens, index)?;
+            pairs.push(KeyValuePair {
+                key: "".to_string(),
+                value,
+                line_number: line_num,
+            });
+        }
     }
 
     if is_nested {
