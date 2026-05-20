@@ -116,6 +116,51 @@ where
     println!("=====================================\n");
 }
 
+/// Прогоняет `parse_fn` по всем `.txt`-файлам в `common/` установки HOI4.
+/// При отсутствии установки тихо пропускается.
+pub fn run_common_field_test<F>(test_name: &str, parse_fn: F)
+where
+    F: Fn(&Path) -> Option<usize> + Copy,
+{
+    let common_dir = Path::new(r"E:\SteamLibrary\steamapps\common\Hearts of Iron IV\common");
+    if !common_dir.exists() {
+        println!("Пропущено: папка common HOI4 не найдена по пути {:?}", common_dir);
+        return;
+    }
+
+    println!("Сканирование папки common ({}) на .txt файлы: {:?}", test_name, common_dir);
+    let mut files_scanned = 0;
+    let mut total_errors = 0;
+    let mut failed_files = Vec::new();
+
+    scan_dir(
+        common_dir,
+        "txt",
+        &mut files_scanned,
+        &mut total_errors,
+        &mut failed_files,
+        parse_fn,
+    );
+
+    println!("\n=== ОТЧЕТ ПО ПОЛЕВОМУ ТЕСТИРОВАНИЮ COMMON {} ===", test_name);
+    println!("Просканировано файлов: {}", files_scanned);
+    println!("Файлов с предупреждениями/ошибками: {}", failed_files.len());
+    println!("Всего обнаружено проблем/ошибок: {}", total_errors);
+
+    if !failed_files.is_empty() {
+        println!("\nТоп 10 файлов с наибольшим количеством проблем:");
+        failed_files.sort_by(|a, b| b.1.cmp(&a.1));
+        for (path, err_count) in failed_files.iter().take(10) {
+            println!(
+                "- {:?} (проблем: {})",
+                path.file_name().unwrap_or_default(),
+                err_count
+            );
+        }
+    }
+    println!("=====================================\n");
+}
+
 pub fn run_history_field_test<F>(sub_dir: &str, test_name: &str, parse_fn: F)
 where
     F: Fn(&Path) -> Option<usize> + Copy,

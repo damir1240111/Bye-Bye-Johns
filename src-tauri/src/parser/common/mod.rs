@@ -19,6 +19,7 @@ pub mod scripted;
 pub mod settings;
 pub mod activities;
 pub mod diplomacy;
+pub mod synergy;
 
 /// Семантическая группа, в которую входит файл common/.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
@@ -496,5 +497,21 @@ mod tests {
         assert_eq!(result.group, CommonGroup::Skipped);
         assert!(result.errors.is_empty(), "у Skipped не должно быть ошибок");
         assert!(result.ast.is_empty(), "у Skipped не должно быть AST");
+    }
+
+    /// Прогон общего парсера по всем `.txt` в `common/` установки HOI4.
+    /// Проверяет, что ядро не падает на реальных файлах, и считает только
+    /// ошибки уровня `Error` (Warning об Unknown-группах ожидаем массово).
+    #[test]
+    #[ignore]
+    fn test_field_common_files() {
+        crate::parser::test_utils::run_common_field_test("Common", |path| {
+            parse_file(path.to_str().unwrap()).ok().map(|res| {
+                res.errors
+                    .iter()
+                    .filter(|e| e.severity == "Error")
+                    .count()
+            })
+        });
     }
 }

@@ -197,6 +197,21 @@ fn parse_common_file(path: &str) -> Result<parser::common::CommonParseResult, St
 }
 
 #[tauri::command]
+fn validate_countries_synergy(
+    country_tag_paths: Vec<String>,
+    country_def_paths: Vec<String>,
+    colors_paths: Vec<String>,
+    alias_paths: Vec<String>,
+) -> Result<parser::common::synergy::CountriesSynergyReport, String> {
+    parser::common::synergy::validate_countries_synergy(
+        country_tag_paths,
+        country_def_paths,
+        colors_paths,
+        alias_paths,
+    )
+}
+
+#[tauri::command]
 fn validate_synergy(
     localisation_paths: Vec<String>,
     gfx_paths: Vec<String>,
@@ -280,6 +295,7 @@ pub fn run() {
             parse_history_general,
             parse_history_unit,
             parse_common_file,
+            validate_countries_synergy,
             validate_synergy
         ])
         .run(tauri::generate_context!())
