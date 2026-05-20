@@ -55,14 +55,17 @@ pub struct CommonError {
 /// Типизированная доменная модель, заполняемая группой по мере её реализации.
 /// На этапе ядра остаётся пустой; варианты добавляются вместе с каждой
 /// семантической группой по отдельности.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub enum CommonTyped {
     /// Заглушка, пока ни одна группа не вернула типизированные данные.
     None,
+    /// Группа 1: данные одного из трёх форматов в countries/, country_tags/,
+    /// country_tag_aliases/.
+    Countries(countries::CountriesData),
 }
 
 /// Результат разбора одного файла common/.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct CommonParseResult {
     pub group: CommonGroup,
     pub source_path: String,
